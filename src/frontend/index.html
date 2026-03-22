@@ -1,22 +1,67 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>OmniCare Ambient Listening</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; color: #333; }
-        button { padding: 10px 20px; font-size: 16px; margin-right: 10px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; }
-        #startBtn { background-color: #e74c3c; color: white; }
-        #startBtn:disabled { background-color: #f19a90; cursor: not-allowed; }
-        #stopBtn { background-color: #2ecc71; color: white; }
-        #stopBtn:disabled { background-color: #8be4b1; cursor: not-allowed; }
-        .output-box { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; min-height: 100px; }
-        h3 { margin-top: 0; color: #2c3e50; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-right: 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: none;
+            font-weight: bold;
+        }
+
+        #startBtn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        #startBtn:disabled {
+            background-color: #f19a90;
+            cursor: not-allowed;
+        }
+
+        #stopBtn {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        #stopBtn:disabled {
+            background-color: #8be4b1;
+            cursor: not-allowed;
+        }
+
+        .output-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            min-height: 100px;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
     </style>
 </head>
+
 <body>
     <h2>OmniCare Clinical Copilot</h2>
     <p>Record the patient encounter. The audio will be automatically formatted to 16kHz Mono and sent to Vertex AI.</p>
-    
+
     <button id="startBtn">🔴 Start Recording</button>
     <button id="stopBtn" disabled>⏹ Stop & Generate SOAP Note</button>
     <p id="status" style="font-weight: bold; margin-top: 15px;">Status: Ready</p>
@@ -28,7 +73,8 @@
 
     <div class="output-box" style="background: #eef2f5;">
         <h3>Generated SOAP Note (MedGemma)</h3>
-        <pre id="soapText" style="white-space: pre-wrap; font-family: inherit;">Waiting for at least 3 sentences of conversation...</pre>
+        <pre id="soapText"
+            style="white-space: pre-wrap; font-family: inherit;">Waiting for at least 3 sentences of conversation...</pre>
     </div>
 
     <script>
@@ -46,13 +92,13 @@
         startBtn.onclick = async () => {
             try {
                 // 1. Request microphone access (requesting mono)
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { channelCount: 1 } 
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { channelCount: 1 }
                 });
 
                 // 2. Initialize AudioContext strictly at 16kHz
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ 
-                    sampleRate: 16000 
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
                 });
 
                 mediaStreamSource = audioContext.createMediaStreamSource(stream);
@@ -105,13 +151,13 @@
                 // The result looks like "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
                 // We only want the raw Base64 string at the end
                 const base64Audio = reader.result.split(',')[1];
-                
+
                 // Generate a unique ID for this specific doctor visit
                 const encounterId = `enc_browser_${Date.now()}`;
 
                 try {
                     statusText.innerText = "Status: 🚀 Sending to Vertex AI MedASR...";
-                    
+
                     // 4. Pipe straight to our OmniCare Backend API
                     const response = await fetch('http://localhost:3000/api/transcribe', {
                         method: 'POST',
@@ -124,11 +170,11 @@
                     });
 
                     const data = await response.json();
-                    
+
                     // 5. Update the UI with real AI Results!
                     statusText.innerText = "Status: ✅ Process Complete.";
                     transcriptText.innerText = data.current_transcript || "No transcription generated.";
-                    
+
                     if (data.soap_note) {
                         soapText.innerText = data.soap_note;
                     } else {
@@ -189,4 +235,5 @@
         }
     </script>
 </body>
+
 </html>
