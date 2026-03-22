@@ -1,0 +1,15 @@
+node_modules/
+.venv/
+.env
+output/
+docs/medgemma_output.md
+synthea-with-dependencies.jar
+test_audio.wav
+*.mp3
+*.wav
+__pycache__/
+.idea/
+.vscode/
+build/
+.agent/
+.gemini/
