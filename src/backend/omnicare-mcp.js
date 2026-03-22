@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import express from 'express';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import { exec } from 'child_process';
 import { GoogleAuth } from 'google-auth-library';
@@ -14,6 +15,7 @@ const auth = new GoogleAuth({
 
 // Create an MVP Express app for handling traditional HTTP if needed
 const app = express();
+app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OmniCare Ambient Listening</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; color: #333; }
+        button { padding: 10px 20px; font-size: 16px; margin-right: 10px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; }
+        #startBtn { background-color: #e74c3c; color: white; }
+        #startBtn:disabled { background-color: #f19a90; cursor: not-allowed; }
+        #stopBtn { background-color: #2ecc71; color: white; }
+        #stopBtn:disabled { background-color: #8be4b1; cursor: not-allowed; }
+        .output-box { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6; min-height: 100px; }
+        h3 { margin-top: 0; color: #2c3e50; }
+    </style>
+</head>
+<body>
+    <h2>OmniCare Clinical Copilot</h2>
+    <p>Record the patient encounter. The audio will be automatically formatted to 16kHz Mono and sent to Vertex AI.</p>
+    
+    <button id="startBtn">🔴 Start Recording</button>
+    <button id="stopBtn" disabled>⏹ Stop & Generate SOAP Note</button>
+    <p id="status" style="font-weight: bold; margin-top: 15px;">Status: Ready</p>
+
+    <div class="output-box">
+        <h3>Live Transcription (MedASR)</h3>
+        <p id="transcriptText">Waiting for audio...</p>
+    </div>
+
+    <div class="output-box" style="background: #eef2f5;">
+        <h3>Generated SOAP Note (MedGemma)</h3>
+        <pre id="soapText" style="white-space: pre-wrap; font-family: inherit;">Waiting for at least 3 sentences of conversation...</pre>
+    </div>
+
+    <script>
+        let audioContext;
+        let mediaStreamSource;
+        let processor;
+        let audioChunks = [];
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusText = document.getElementById('status');
+        const transcriptText = document.getElementById('transcriptText');
+        const soapText = document.getElementById('soapText');
+
+        startBtn.onclick = async () => {
+            try {
+                // 1. Request microphone access (requesting mono)
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { channelCount: 1 } 
+                });
+
+                // 2. Initialize AudioContext strictly at 16kHz
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ 
+                    sampleRate: 16000 
+                });
+
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+
+                // 3. Create a processor to capture raw audio data
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                mediaStreamSource.connect(processor);
+                processor.connect(audioContext.destination);
+
+                audioChunks = []; // Reset chunks
+
+                // 4. Collect the raw PCM data (Float32) as it comes in
+                processor.onaudioprocess = (e) => {
+                    // Push the left channel data to our chunks array
+                    audioChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+                };
+
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                statusText.innerText = "Status: 🔴 Listening (16kHz Mono)...";
+                transcriptText.innerText = "Listening...";
+                soapText.innerText = "Waiting for transcription...";
+
+            } catch (err) {
+                console.error("Microphone access denied or error:", err);
+                statusText.innerText = "Error: Could not access microphone. Ensure site is served over localhost or HTTPS.";
+            }
+        };
+
+        stopBtn.onclick = async () => {
+            // 1. Stop processing audio
+            processor.disconnect();
+            mediaStreamSource.disconnect();
+            if (audioContext.state !== 'closed') {
+                audioContext.close();
+            }
+
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            statusText.innerText = "Status: ⚙️ Packaging Audio & Sending to Backend...";
+
+            // 2. Convert captured Float32 data to 16-bit Int WAV
+            const wavBlob = exportWAV(audioChunks, 16000);
+
+            // 3. Convert Blob to Base64 to send to our Node.js API
+            const reader = new FileReader();
+            reader.readAsDataURL(wavBlob);
+            reader.onloadend = async () => {
+                // The result looks like "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
+                // We only want the raw Base64 string at the end
+                const base64Audio = reader.result.split(',')[1];
+                
+                // Generate a unique ID for this specific doctor visit
+                const encounterId = `enc_browser_${Date.now()}`;
+
+                try {
+                    statusText.innerText = "Status: 🚀 Sending to Vertex AI MedASR...";
+                    
+                    // 4. Pipe straight to our OmniCare Backend API
+                    const response = await fetch('http://localhost:3000/api/transcribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            encounter_id: encounterId,
+                            text_chunk: "",
+                            audio_chunk: base64Audio
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    // 5. Update the UI with real AI Results!
+                    statusText.innerText = "Status: ✅ Process Complete.";
+                    transcriptText.innerText = data.current_transcript || "No transcription generated.";
+                    
+                    if (data.soap_note) {
+                        soapText.innerText = data.soap_note;
+                    } else {
+                        soapText.innerText = "Not enough conversation to trigger the MedGemma SOAP Note yet. \n(Note: The backend triggers MedGemma after ~3 sentences).";
+                    }
+
+                } catch (error) {
+                    console.error("Backend Error:", error);
+                    statusText.innerText = "Error: Failed to connect to OmniCare Backend. Is localhost:3000 running?";
+                }
+            };
+        };
+
+        // --- Helper Function: Package raw PCM into a valid WAV file ---
+        function exportWAV(chunks, sampleRate) {
+            // Flatten the chunks into a single array
+            const length = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            const audioBuffer = new Float32Array(length);
+            let offset = 0;
+            for (let i = 0; i < chunks.length; i++) {
+                audioBuffer.set(chunks[i], offset);
+                offset += chunks[i].length;
+            }
+
+            // Convert Float32 (-1.0 to 1.0) to Int16 (-32768 to 32767)
+            const buffer = new ArrayBuffer(44 + audioBuffer.length * 2);
+            const view = new DataView(buffer);
+
+            // Write standard WAV Header for 16kHz Mono
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + audioBuffer.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);          // Subchunk1Size (16 for PCM)
+            view.setUint16(20, 1, true);           // AudioFormat (1 for PCM)
+            view.setUint16(22, 1, true);           // NumChannels (1 for Mono)
+            view.setUint32(24, sampleRate, true);  // SampleRate (16000)
+            view.setUint32(28, sampleRate * 2, true); // ByteRate
+            view.setUint16(32, 2, true);           // BlockAlign
+            view.setUint16(34, 16, true);          // BitsPerSample (16-bit)
+            writeString(view, 36, 'data');
+            view.setUint32(40, audioBuffer.length * 2, true);
+
+            // Write PCM Samples
+            let pcmOffset = 44;
+            for (let i = 0; i < audioBuffer.length; i++, pcmOffset += 2) {
+                let s = Math.max(-1, Math.min(1, audioBuffer[i]));
+                view.setInt16(pcmOffset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+    </script>
+</body>
+</html>
