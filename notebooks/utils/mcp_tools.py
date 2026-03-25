@@ -6,6 +6,21 @@ as MCP tools via the Python MCP SDK.
 
 from typing import Optional
 
+try:
+    import torch
+except ImportError:
+    pass
+
+try:
+    from .prompts import (
+        SOAP_SYSTEM_PROMPT, SOAP_USER_TEMPLATE,
+        ADMISSION_SYSTEM_PROMPT, ADMISSION_USER_TEMPLATE,
+        RADIOLOGY_SYSTEM_PROMPT, RADIOLOGY_USER_TEMPLATE,
+        DISCHARGE_SYSTEM_PROMPT, DISCHARGE_USER_TEMPLATE
+    )
+except ImportError:
+    pass
+
 
 # ============================================================
 # Tool: transcribe_audio
@@ -25,8 +40,6 @@ def transcribe_audio(audio_path: str, asr_pipeline, medical_prompt: str) -> str:
 # ============================================================
 def generate_soap_note(transcript: str, model, processor, max_new_tokens: int = 1024) -> str:
     """Generate a SOAP note from a transcript using MedGemma."""
-    from .prompts import SOAP_SYSTEM_PROMPT, SOAP_USER_TEMPLATE
-    import torch
 
     messages = [
         {"role": "system", "content": SOAP_SYSTEM_PROMPT},
@@ -55,8 +68,6 @@ def generate_admission_note(
     model, processor, max_new_tokens: int = 1024
 ) -> str:
     """Generate an admission note using MedGemma."""
-    from .prompts import ADMISSION_SYSTEM_PROMPT, ADMISSION_USER_TEMPLATE
-    import torch
 
     messages = [
         {"role": "system", "content": ADMISSION_SYSTEM_PROMPT},
@@ -86,8 +97,6 @@ def analyze_medical_image(
     model, processor, max_new_tokens: int = 1024
 ) -> str:
     """Analyze a medical image using MedGemma multimodal."""
-    from .prompts import RADIOLOGY_SYSTEM_PROMPT, RADIOLOGY_USER_TEMPLATE
-    import torch
 
     user_content = RADIOLOGY_USER_TEMPLATE.format(
         clinical_context=clinical_context, modality=modality, body_part=body_part
@@ -121,8 +130,6 @@ def generate_discharge_summary(
     model, processor, max_new_tokens: int = 1536
 ) -> str:
     """Generate a comprehensive discharge summary using MedGemma."""
-    from .prompts import DISCHARGE_SYSTEM_PROMPT, DISCHARGE_USER_TEMPLATE
-    import torch
 
     messages = [
         {"role": "system", "content": DISCHARGE_SYSTEM_PROMPT},
@@ -150,7 +157,7 @@ def generate_discharge_summary(
 def parse_soap_sections(soap_text: str) -> dict:
     """Parse a SOAP note text into structured sections."""
     sections = {"subjective": "", "objective": "", "assessment": "", "plan": ""}
-    current_section = None
+    current_section = ""
 
     for line in soap_text.split("\n"):
         line_lower = line.lower().strip()
