@@ -7,12 +7,12 @@ as MCP tools via the Python MCP SDK.
 from typing import Optional
 
 try:
-    import torch
+    import torch  # type: ignore
 except ImportError:
     pass
 
 try:
-    from .prompts import (
+    from .prompts import (  # type: ignore
         SOAP_SYSTEM_PROMPT, SOAP_USER_TEMPLATE,
         ADMISSION_SYSTEM_PROMPT, ADMISSION_USER_TEMPLATE,
         RADIOLOGY_SYSTEM_PROMPT, RADIOLOGY_USER_TEMPLATE,
