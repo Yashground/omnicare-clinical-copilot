@@ -27,9 +27,12 @@ SOAP_USER_TEMPLATE = """Generate a structured SOAP note from this doctor-patient
 Transcript:
 {transcript}
 
+Acoustic Biomarker Data:
+{acoustic_data}
+
 Format your response with these exact section headers:
 **Subjective:**
-**Objective:**
+**Objective:** (CRITICAL: You must include the Acoustic Biomarker Data findings here)
 **Assessment:**
 **Plan:**"""
 

@@ -29,6 +29,7 @@ def blank_encounter(encounter_id: str, patient_name: str = "", mrn: str = "", do
                 "timestamp": None,
                 "audio_file": None,
                 "transcript": None,
+                "acoustic_biomarkers": None,
                 "soap_note": {"subjective": "", "objective": "", "assessment": "", "plan": ""}
             },
             "admission": {

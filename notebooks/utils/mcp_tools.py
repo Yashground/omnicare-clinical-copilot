@@ -5,6 +5,13 @@ as MCP tools via the Python MCP SDK.
 """
 
 from typing import Optional
+import os
+import json
+import numpy as np
+import tensorflow as tf
+import librosa
+from huggingface_hub import snapshot_download
+from .prompts import SOAP_USER_TEMPLATE
 
 try:
     import torch  # type: ignore
@@ -36,14 +43,70 @@ def transcribe_audio(audio_path: str, asr_pipeline, medical_prompt: str) -> str:
 
 
 # ============================================================
+# HeAR Acoustic Biomarker Analysis
+# ============================================================
+_HEAR_MODEL = None
+
+def load_hear_model():
+    """Loads the Google HeAR event detector into memory."""
+    global _HEAR_MODEL
+    if _HEAR_MODEL is None:
+        print("Loading Google HeAR Event Detector...")
+        repo_path = snapshot_download(repo_id="google/hear")
+        model_path = os.path.join(repo_path, 'event_detector', 'event_detector_large')
+        _HEAR_MODEL = tf.keras.layers.TFSMLayer(model_path, call_endpoint='serving_default')
+    return _HEAR_MODEL
+
+def detect_acoustic_symptoms(audio_file: str) -> dict:
+    """Detect acoustic biomarkers using Google HeAR."""
+    model = load_hear_model()
+    audio_array, sr = librosa.load(audio_file, sr=16000, mono=True)
+    
+    chunk_size = 32000
+    cough_count = 0
+    highest_confidence = 0.0
+    
+    for i in range(0, len(audio_array), chunk_size):
+        chunk = audio_array[i:i + chunk_size]
+        if len(chunk) < chunk_size:
+            chunk = np.pad(chunk, (0, chunk_size - len(chunk)))
+            
+        input_tensor = tf.expand_dims(tf.constant(chunk, dtype=tf.float32), axis=0)
+        predictions = model(input_tensor)
+        output_tensor = predictions['mobilenetv3_large_model'][0]
+        
+        cough_prob = float(output_tensor[0])
+        if cough_prob > 0.50:
+            cough_count += 1
+            highest_confidence = max(highest_confidence, cough_prob)
+                
+    return {
+        "symptoms_detected": "Cough" if cough_count > 0 else "None",
+        "total_cough_events": cough_count,
+        "max_confidence_score": f"{highest_confidence * 100:.1f}%",
+        "clinical_note": f"Acoustic AI detected {cough_count} coughing events during the consultation." if cough_count > 0 else "No prominent respiratory symptoms detected acoustically."
+    }
+
+
+# ============================================================
 # Tool: generate_soap_note
 # ============================================================
-def generate_soap_note(transcript: str, model, processor, max_new_tokens: int = 1024) -> str:
+def generate_soap_note(transcript: str, model, processor, max_new_tokens: int = 1024, acoustic_biomarkers: dict = None) -> str:
     """Generate a SOAP note from a transcript using MedGemma."""
+
+    if acoustic_biomarkers:
+        acoustic_str = json.dumps(acoustic_biomarkers, indent=2)
+    else:
+        acoustic_str = "No acoustic data captured for this encounter."
+
+    prompt = SOAP_USER_TEMPLATE.format(
+        transcript=transcript,
+        acoustic_data=acoustic_str
+    )
 
     messages = [
         {"role": "system", "content": SOAP_SYSTEM_PROMPT},
-        {"role": "user", "content": SOAP_USER_TEMPLATE.format(transcript=transcript)}
+        {"role": "user", "content": prompt}
     ]
 
     inputs = processor.apply_chat_template(
