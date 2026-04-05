@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sona — Clinical Pipeline Diagram</title>
+<style>
+:root {
+  --bg: #ffffff; --bg2: #f5f4f0; --bg3: #ece9e2;
+  --t: #1a1a18; --t2: #6b6a64; --t3: #9c9a92;
+  --b1: rgba(0,0,0,0.4); --b2: rgba(0,0,0,0.3); --b3: rgba(0,0,0,0.15);
+  --info-bg: #E6F1FB; --info-t: #0C447C; --info-b: #85B7EB;
+  --ok-bg: #EAF3DE; --ok-t: #27500A; --ok-b: #97C459;
+  --warn-bg: #FAEEDA; --warn-t: #633806; --warn-b: #EF9F27;
+  --r: 8px; --rl: 12px;
+  --sans: system-ui,-apple-system,sans-serif;
+  --mono: 'Menlo','Monaco',monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1a1a18;--bg2:#242420;--bg3:#2e2e2a;
+  --t:#e8e6e0;--t2:#9c9a92;--t3:#6b6a64;
+  --b1:rgba(255,255,255,0.4);--b2:rgba(255,255,255,0.3);--b3:rgba(255,255,255,0.15);
+  --info-bg:#042C53;--info-t:#85B7EB;--info-b:#185FA5;
+  --ok-bg:#173404;--ok-t:#97C459;--ok-b:#3B6D11;
+  --warn-bg:#412402;--warn-t:#EF9F27;--warn-b:#854F0B;
+}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);min-height:100vh;padding:24px 16px}
+.card{background:var(--bg);border:0.5px solid var(--b2);border-radius:var(--rl);padding:20px;max-width:720px;margin:0 auto}
+.header{margin-bottom:16px}
+.header h1{font-size:18px;font-weight:500;color:var(--t)}
+.header p{font-size:12px;color:var(--t3);margin-top:4px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tb{padding:6px 14px;font-size:12px;font-weight:500;border:0.5px solid var(--b2);border-radius:var(--r);background:transparent;color:var(--t2);cursor:pointer;transition:all 0.12s}
+.tb.on{background:var(--bg2);color:var(--t);border-color:var(--b1)}
+.view{display:none}.view.on{display:block}
+.legend{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.ld{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.hint{font-size:11px;color:var(--t3);font-style:italic;margin-bottom:10px}
+.orch-bar{background:var(--warn-bg);border:0.5px solid var(--warn-b);color:var(--warn-t);border-radius:var(--r);padding:9px 14px;margin-bottom:10px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;transition:opacity 0.12s}
+.orch-bar:hover{opacity:0.85}
+.orch-bar.active{outline:1.5px solid var(--warn-b);outline-offset:1px}
+.grid{display:grid;grid-template-columns:100px 1fr 148px;gap:7px;align-items:center}
+.ibox{background:var(--info-bg);border:0.5px solid var(--info-b);border-radius:var(--r);padding:8px 6px;font-size:11px;font-weight:500;color:var(--info-t);text-align:center;line-height:1.4}
+.obox{background:var(--ok-bg);border:0.5px solid var(--ok-b);border-radius:var(--r);padding:8px 6px;font-size:11px;color:var(--ok-t);text-align:center;line-height:1.4}
+.ibox-n{background:var(--bg2);border:0.5px solid var(--b3);border-radius:var(--r);padding:8px 6px;font-size:10px;color:var(--t3);text-align:center;line-height:1.4}
+.astack{display:flex;flex-direction:column;gap:6px}
+.agent{background:var(--bg);border:0.5px solid var(--b2);border-radius:var(--r);padding:9px 12px;cursor:pointer;transition:border-color 0.12s,background 0.12s}
+.agent:hover,.agent.active{border-color:var(--b1);background:var(--bg2)}
+.agent.active{border-width:1px}
+.aname{font-size:13px;font-weight:500;color:var(--t)}
+.asub{font-size:11px;color:var(--t2);margin-top:2px}
+.drow{grid-column:1/-1;height:6px}
+.detail{margin-top:10px;background:var(--bg2);border:0.5px solid var(--b3);border-radius:var(--rl);padding:14px 16px}
+.detail h3{font-size:14px;font-weight:500;color:var(--t);margin-bottom:6px}
+.detail p{font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px}
+.sep{border:none;border-top:0.5px solid var(--b3);margin:8px 0}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.tag{font-size:11px;padding:2px 8px;border-radius:4px;border:0.5px solid}
+.ti{background:var(--info-bg);color:var(--info-t);border-color:var(--info-b)}
+.to{background:var(--ok-bg);color:var(--ok-t);border-color:var(--ok-b)}
+.warn-box{font-size:11px;background:var(--warn-bg);color:var(--warn-t);padding:8px 10px;border-radius:var(--r);margin-top:6px;line-height:1.5}
+.flow-line{font-size:11px;font-family:var(--mono);color:var(--t3);padding:6px 10px;background:var(--bg);border-radius:var(--r);margin-top:4px;border:0.5px solid var(--b3);line-height:1.5}
+.slabel{font-size:11px;font-weight:500;color:var(--t3);margin-bottom:3px}
+.fsbar{margin-top:10px;background:var(--bg2);border:0.5px solid var(--b2);border-radius:var(--r);padding:9px 14px;font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px}
+.phases{display:flex;flex-direction:column}
+.phase{display:grid;grid-template-columns:28px 1fr;gap:10px;padding-bottom:14px;position:relative}
+.phase:last-child{padding-bottom:0}
+.pline{position:absolute;left:13px;top:28px;bottom:0;width:1px;background:var(--b3)}
+.phase:last-child .pline{display:none}
+.pdot{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--t2);flex-shrink:0;background:var(--bg);position:relative;z-index:1}
+.pdot.done{background:var(--ok-bg);border-color:var(--ok-b);color:var(--ok-t)}
+.pdot.orch{background:var(--warn-bg);border-color:var(--warn-b);color:var(--warn-t)}
+.pcard{background:var(--bg);border:0.5px solid var(--b2);border-radius:var(--r);padding:10px 14px}
+.ptitle{font-size:13px;font-weight:500;color:var(--t);margin-bottom:3px}
+.pdesc{font-size:11px;color:var(--t2);line-height:1.5;margin-bottom:8px}
+.pbadges{display:flex;flex-wrap:wrap;gap:4px}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;border:0.5px solid}
+.b-ag{background:#EEEDFE;color:#3C3489;border-color:#AFA9EC}
+.b-par{background:var(--warn-bg);color:var(--warn-t);border-color:var(--warn-b)}
+.b-out{background:var(--ok-bg);color:var(--ok-t);border-color:var(--ok-b)}
+.b-st{background:var(--bg2);color:var(--t2);border-color:var(--b3)}
+.b-info{background:var(--info-bg);color:var(--info-t);border-color:var(--info-b)}
+.b-warn{background:var(--warn-bg);color:var(--warn-t);border-color:var(--warn-b)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>Sona — Clinical Copilot Pipeline</h1>
+    <p>Philips HMP Impact Award · Interactive architecture diagram</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tb on" onclick="switchTab('pipeline',this)">Pipeline view</button>
+    <button class="tb" onclick="switchTab('timeline',this)">Execution order</button>
+  </div>
+
+  <div class="view on" id="v-pipeline">
+    <div class="legend">
+      <div class="li"><div class="ld" style="background:var(--warn-bg);border:0.5px solid var(--warn-b)"></div>Orchestrator</div>
+      <div class="li"><div class="ld" style="background:var(--info-bg);border:0.5px solid var(--info-b)"></div>Input</div>
+      <div class="li"><div class="ld" style="background:var(--bg);border:0.5px solid var(--b2)"></div>Agent (click)</div>
+      <div class="li"><div class="ld" style="background:var(--ok-bg);border:0.5px solid var(--ok-b)"></div>Output</div>
+    </div>
+    <p class="hint">Click the orchestrator or any agent to see its data flow and status.</p>
+
+    <div class="orch-bar" id="a-orch" onclick="show('orch')">
+      ⚙ ClinicalOrchestrator — coordinates all agents, manages phase sequencing and encounter state
+    </div>
+
+    <div class="grid">
+      <div class="ibox">Audio input</div>
+      <div class="astack">
+        <div class="agent" id="a-consultation" onclick="show('consultation')">
+          <div class="aname">ConsultationAgent ✅</div>
+          <div class="asub">Whisper ASR → MedGemma → SOAP note</div>
+        </div>
+        <div class="agent" id="a-hear" onclick="show('hear')">
+          <div class="aname">HeARAgent 🟡</div>
+          <div class="asub">Google HeAR — cough / wheeze detection</div>
+        </div>
+      </div>
+      <div class="obox">SOAP Note<br><span style="font-size:10px;opacity:0.75">+ acoustic findings</span></div>
+      <div class="drow"></div>
+      <div class="ibox">FHIR Vitals</div>
+      <div class="agent" id="a-vitals" onclick="show('vitals')">
+        <div class="aname">VitalsMonitorAgent ✅</div>
+        <div class="asub">HR, BP, Temp anomaly detection</div>
+      </div>
+      <div class="obox">Admission Note</div>
+      <div class="drow"></div>
+      <div class="ibox">DICOM Images</div>
+      <div class="agent" id="a-radiology" onclick="show('radiology')">
+        <div class="aname">RadiologyAgent ✅</div>
+        <div class="asub">MedGemma multimodal — image + context</div>
+      </div>
+      <div class="obox">Radiology Report</div>
+      <div class="drow"></div>
+      <div class="ibox-n">All above →</div>
+      <div class="agent" id="a-discharge" onclick="show('discharge')">
+        <div class="aname">DischargeAgent ✅ · ICD-10 🟡</div>
+        <div class="asub">Aggregates all outputs → discharge summary</div>
+      </div>
+      <div class="obox">Discharge Summary<br><span style="font-size:10px;opacity:0.75">+ ICD-10 codes</span></div>
+    </div>
+
+    <div class="detail" id="detail">
+      <p style="color:var(--t3);font-style:italic;font-size:13px">← Click the orchestrator or any agent to see details.</p>
+    </div>
+    <div class="fsbar">🗄 Firestore — persists encounter state across all agents · JSON fallback if GCP unavailable</div>
+  </div>
+
+  <div class="view" id="v-timeline">
+    <p class="hint" style="margin-bottom:14px">Order of agent execution during a single patient encounter run.</p>
+    <div class="phases">
+      <div class="phase"><div class="pline"></div><div class="pdot orch">⚙</div>
+        <div class="pcard"><div class="ptitle">Orchestrator initializes encounter</div>
+          <div class="pdesc">ClinicalOrchestrator creates a new encounter ID, loads patient context from Firestore (or creates a new record), and sets the pipeline phase to "consultation".</div>
+          <div class="pbadges"><span class="badge b-ag">ClinicalOrchestrator</span><span class="badge b-st">Firestore lookup / create</span><span class="badge b-info">Patient ID assigned</span></div>
+        </div>
+      </div>
+      <div class="phase"><div class="pline"></div><div class="pdot done">1</div>
+        <div class="pcard"><div class="ptitle">Audio processing — both agents run in parallel</div>
+          <div class="pdesc">ConsultationAgent and HeARAgent process the same audio file simultaneously. Whisper transcribes speech while HeAR extracts acoustic embeddings. HeAR findings inject into the SOAP Objective before the note is finalised.</div>
+          <div class="pbadges"><span class="badge b-ag">ConsultationAgent</span><span class="badge b-ag">HeARAgent</span><span class="badge b-par">parallel</span><span class="badge b-out">SOAP Note</span><span class="badge b-st">→ Firestore</span></div>
+        </div>
+      </div>
+      <div class="phase"><div class="pline"></div><div class="pdot done">2</div>
+        <div class="pcard"><div class="ptitle">Vitals ingestion — can run in parallel with Step 1</div>
+          <div class="pdesc">VitalsMonitorAgent parses the FHIR R4 bundle, checks values against clinical thresholds, and auto-generates an admission note if anomalies are detected.</div>
+          <div class="pbadges"><span class="badge b-ag">VitalsMonitorAgent</span><span class="badge b-info">FHIR R4 input</span><span class="badge b-out">Admission Note</span><span class="badge b-st">→ Firestore</span></div>
+        </div>
+      </div>
+      <div class="phase"><div class="pline"></div><div class="pdot done">3</div>
+        <div class="pcard"><div class="ptitle">Imaging analysis — needs Step 1 output first</div>
+          <div class="pdesc">RadiologyAgent fetches the SOAP Note from Firestore and combines it with the medical image before calling MedGemma multimodal. The radiology report is clinically contextual — never a standalone image read.</div>
+          <div class="pbadges"><span class="badge b-ag">RadiologyAgent</span><span class="badge b-warn">depends on Step 1</span><span class="badge b-out">Radiology Report</span><span class="badge b-st">→ Firestore</span></div>
+        </div>
+      </div>
+      <div class="phase"><div class="pline"></div><div class="pdot done">4</div>
+        <div class="pcard"><div class="ptitle">Discharge aggregation — needs all prior steps</div>
+          <div class="pdesc">DischargeAgent pulls all outputs from Firestore and sends them to MedGemma as a single unified prompt to generate the discharge summary and ICD-10 codes.</div>
+          <div class="pbadges"><span class="badge b-ag">DischargeAgent</span><span class="badge b-warn">depends on Steps 1+2+3</span><span class="badge b-out">Discharge Summary</span><span class="badge b-out">ICD-10 codes</span><span class="badge b-st">→ Firestore</span></div>
+        </div>
+      </div>
+      <div class="phase"><div class="pline"></div><div class="pdot orch">⚙</div>
+        <div class="pcard"><div class="ptitle">Orchestrator closes encounter</div>
+          <div class="pdesc">Marks encounter complete in Firestore. FHIR write-back to EHR is not yet implemented — a known gap planned before April 30.</div>
+          <div class="pbadges"><span class="badge b-ag">ClinicalOrchestrator</span><span class="badge b-st">Encounter marked complete</span><span class="badge b-warn">⚠ FHIR write-back missing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(id,btn){
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('v-'+id).classList.add('on');
+}
+const data={
+  orch:{name:'ClinicalOrchestrator',status:'✅ Fully working',desc:'The central coordinator. Initializes patient encounters, loads context from Firestore, sequences agent phases in the correct order, and ensures each agent receives outputs from prior agents. Lives in notebooks/utils/agents.py.',inputs:['Patient ID or new encounter trigger','Firestore encounter state','Agent phase sequence config'],outputs:['Orchestrated pipeline run','Complete encounter record in Firestore','Phase transition events'],flow:'Encounter init → phase sequencing → agent dispatch → state persistence → encounter close',risk:null},
+  consultation:{name:'ConsultationAgent',status:'✅ Fully working',desc:'Converts doctor-patient audio into a structured SOAP note. Whisper Large v3 Turbo handles transcription with medical vocabulary priming. MedGemma 1.5-4b-it (4-bit quantized) generates the clinical note. Three input paths: raw audio, pre-written transcript, or dynamic conversation.',inputs:['Audio file (.wav / .mp3)','Pre-written transcript (optional)','Medical vocabulary primer'],outputs:['SOAP Note — Subjective, Objective, Assessment, Plan','Transcript text','Encounter metadata → Firestore'],flow:'Audio → Whisper ASR → Transcript → MedGemma → SOAP JSON → Firestore',risk:null},
+  hear:{name:'HeARAgent',status:'🟡 Partial — needs calibration data',desc:"Uses Google HeAR model to detect non-verbal acoustic biomarkers — coughs, wheezes, breathing patterns — from the same audio file. Findings inject directly into the SOAP Objective section. Sona's biggest differentiator: most tools completely ignore non-speech audio.",inputs:['Audio file (same as ConsultationAgent)','512-dim HeAR health acoustic embeddings'],outputs:['Respiratory event flags','Severity estimate','Injected into SOAP Objective field'],flow:'Audio → HeAR model → 512-dim embeddings → classifier → SOAP Objective',risk:'Currently using energy-based fallback, not a true acoustic classifier. Accuracy is low without labeled calibration data. Needs real labeled cough/wheeze samples to improve detection threshold.'},
+  vitals:{name:'VitalsMonitorAgent',status:'✅ Fully working',desc:'Consumes FHIR R4 Observation bundles (HR, BP, Temperature, SpO2) and detects anomalies against clinical thresholds in real time. Auto-generates admission notes when abnormalities are flagged. Saves ~25 min per admission down to ~5 min review.',inputs:['FHIR R4 Bundle (Observation resources)','Synthea-generated vitals data','Configurable clinical thresholds'],outputs:['Anomaly flags with severity','Admission Note','Alert summary → Firestore'],flow:'FHIR Bundle → fhir_helpers.py parser → anomaly rules → admission note → Firestore',risk:null},
+  radiology:{name:'RadiologyAgent',status:'✅ Working · DICOM upload 🟡 stubbed',desc:'Uses MedGemma multimodal to analyze medical images alongside prior clinical context from the SOAP note. Key advantage: images are never analyzed in isolation — the model always has the full patient clinical history when interpreting the image.',inputs:['Medical image (JPEG/PNG working · DICOM stubbed)','Prior SOAP Note from ConsultationAgent','Full patient encounter context'],outputs:['Radiology report with findings','Clinical correlation to SOAP context','Saved to encounter in Firestore'],flow:'Image + SOAP context → MedGemma multimodal → radiology report → Firestore',risk:'DICOM serialization is stubbed in RadiologyAgent.process() at lines 447–456. Requires real DICOM files for full pipeline. Currently works with JPEG/PNG.'},
+  discharge:{name:'DischargeAgent',status:'✅ Working · ICD-10 🟡 keyword only',desc:'Aggregates all prior agent outputs from Firestore and generates a complete discharge summary. Also produces ICD-10 codes currently via keyword matching. Saves ~40 min per discharge down to ~10 min review.',inputs:['SOAP Note (ConsultationAgent)','Admission Note (VitalsMonitorAgent)','Radiology Report (RadiologyAgent)','Full encounter state from Firestore'],outputs:['Discharge Summary document','ICD-10 codes (keyword-based)','Care plan and follow-up instructions'],flow:'All prior outputs → Firestore fetch → aggregation → MedGemma → discharge doc + ICD-10',risk:'ICD-10 uses keyword matching only (agents.py lines 618–648). No SNOMED/ontology lookup. FHIR write-back not implemented — discharge data stays in Sona, not returned to EHR.'}
+};
+let cur=null;
+function show(id){
+  document.querySelectorAll('.agent,.orch-bar').forEach(e=>e.classList.remove('active'));
+  cur=id;
+  document.getElementById('a-'+id).classList.add('active');
+  const a=data[id];
+  document.getElementById('detail').innerHTML=`
+    <h3>${a.name} <span style="font-size:11px;font-weight:400;color:var(--t2)">${a.status}</span></h3>
+    <p>${a.desc}</p>
+    <hr class="sep">
+    <div class="slabel">Consumes</div>
+    <div class="tags">${a.inputs.map(i=>`<span class="tag ti">${i}</span>`).join('')}</div>
+    <div class="slabel">Produces</div>
+    <div class="tags">${a.outputs.map(o=>`<span class="tag to">${o}</span>`).join('')}</div>
+    <hr class="sep">
+    <div class="slabel">Data flow</div>
+    <div class="flow-line">${a.flow}</div>
+    ${a.risk?`<div class="warn-box">⚠ ${a.risk}</div>`:''}
+  `;
+}
+</script>
+</body>
+</html>
